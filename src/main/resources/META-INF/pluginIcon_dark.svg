@@ -1,0 +1,13 @@
+<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(2,9)">
+<rect x="0" y="2" width="10" height="10" rx="1" fill="#64B5F6"/>
+<ellipse cx="5" cy="12" rx="5" ry="1.8" fill="#42A5F5"/>
+<ellipse cx="5" cy="7" rx="5" ry="1.6" fill="#90CAF9" opacity="0.4"/>
+<ellipse cx="5" cy="2" rx="5" ry="2.2" fill="#BBDEFB"/>
+</g>
+<g transform="translate(13.5,14)">
+<line x1="0" y1="2" x2="4.5" y2="2" stroke="#FFB74D" stroke-width="1.6" stroke-linecap="round"/>
+<polygon points="4,0 7,2 4,4" fill="#FFB74D"/>
+</g>
+<text x="21.5" y="19.5" font-family="monospace" font-size="12" font-weight="bold" fill="#B0BEC5">{/}</text>
+</svg>

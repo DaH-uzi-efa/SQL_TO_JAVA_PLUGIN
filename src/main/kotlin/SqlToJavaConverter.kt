@@ -5,9 +5,11 @@ object SqlToJavaConverter {
     data class Column(val name: String, val sqlType: String, val isNotNull: Boolean, val isPrimaryKey: Boolean)
     data class Table(val name: String, val columns: List<Column>, val foreignKeys: Map<String, String>)
 
+    private const val WORD = "[\\p{L}\\p{N}_]+"
+
     fun parseTables(sql: String): List<Table> {
         val regex = Regex(
-            """CREATE\s+TABLE\s+`?(\w+)`?\s*\((.*?)\);""",
+            """CREATE\s+TABLE\s+`?($WORD)`?\s*\((.*?)\);""",
             setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
         )
         return regex.findAll(sql).map { match ->
@@ -21,7 +23,10 @@ object SqlToJavaConverter {
                 when {
                     upper.startsWith("PRIMARY KEY") -> {}
                     upper.startsWith("FOREIGN KEY") -> {
-                        val fk = Regex("""FOREIGN\s+KEY\s*\((\w+)\)\s*REFERENCES\s+(\w+)""", RegexOption.IGNORE_CASE).find(line)
+                        val fk = Regex(
+                            """FOREIGN\s+KEY\s*\(($WORD)\)\s*REFERENCES\s+($WORD)""",
+                            RegexOption.IGNORE_CASE
+                        ).find(line)
                         if (fk != null) foreignKeys[fk.groupValues[1]] = fk.groupValues[2]
                     }
                     upper.startsWith("CONSTRAINT") || upper.startsWith("UNIQUE") ||
@@ -45,51 +50,47 @@ object SqlToJavaConverter {
     fun findSharedColumns(tables: List<Table>): List<Column> {
         if (tables.size < 2) return emptyList()
 
-        val colCounts = mutableMapOf<String, Int>()
+        // For each column, track which tables have it
+        val colToTables = mutableMapOf<String, MutableSet<String>>()
         for (t in tables) for (c in t.columns) {
-            colCounts[c.name.uppercase()] = (colCounts[c.name.uppercase()] ?: 0) + 1
+            colToTables.getOrPut(c.name.uppercase()) { mutableSetOf() }.add(t.name)
         }
 
-        val threshold = (tables.size * 0.5).toInt().coerceAtLeast(2)
-        val sharedNames = colCounts.filter { it.value >= threshold }.keys
+        // Group columns by the exact set of tables they appear in
+        val groupedByTableSet = mutableMapOf<Set<String>, MutableList<String>>()
+        for ((col, tableSet) in colToTables) {
+            if (tableSet.size >= 2) {
+                groupedByTableSet.getOrPut(tableSet) { mutableListOf() }.add(col)
+            }
+        }
 
-        val ref = tables.firstOrNull { t ->
-            t.columns.map { it.name.uppercase() }.toSet().containsAll(sharedNames)
-        } ?: return emptyList()
+        // Find the best group: most columns shared by the same set of tables (min 3 columns)
+        val bestGroup = groupedByTableSet.entries
+            .filter { it.value.size >= 3 }
+            .maxByOrNull { it.value.size }
+            ?: return emptyList()
 
-        return ref.columns.filter { it.name.uppercase() in sharedNames }
+        val bestSharedNames = bestGroup.value.toSet()
+
+        // Use first matching table as reference for column types/order
+        val refTable = tables.first { t ->
+            t.columns.map { it.name.uppercase() }.toSet().containsAll(bestSharedNames)
+        }
+
+        return refTable.columns.filter { it.name.uppercase() in bestSharedNames }
     }
 
-    fun generateWithInheritance(
-        parentName: String,
-        sharedColumns: List<Column>,
-        childTables: List<Table>,
-        standaloneTables: List<Table>
-    ): String {
-        val sb = StringBuilder()
-        sb.appendLine("package dto;\n")
-        sb.appendLine(generateAbstractClass(parentName, sharedColumns))
-        sb.appendLine()
+    fun findChildAndStandalone(
+        tables: List<Table>,
+        sharedColumns: List<Column>
+    ): Pair<List<Table>, List<Table>> {
         val sharedNames = sharedColumns.map { it.name.uppercase() }.toSet()
-        for (child in childTables) {
-            sb.appendLine(generateChildClass(child, parentName, sharedColumns, sharedNames))
-            sb.appendLine()
+        val children = tables.filter { t ->
+            val cols = t.columns.map { it.name.uppercase() }.toSet()
+            cols.containsAll(sharedNames) && t.columns.size > sharedNames.size
         }
-        for (table in standaloneTables) {
-            sb.appendLine(generateStandaloneClass(table))
-            sb.appendLine()
-        }
-        return sb.toString().trimEnd()
-    }
-
-    fun generateAll(tables: List<Table>): String {
-        val sb = StringBuilder()
-        sb.appendLine("package dto;\n")
-        for (table in tables) {
-            sb.appendLine(generateStandaloneClass(table))
-            sb.appendLine()
-        }
-        return sb.toString().trimEnd()
+        val standalone = tables - children.toSet()
+        return Pair(children, standalone)
     }
 
     fun generateFilesWithInheritance(
@@ -101,16 +102,25 @@ object SqlToJavaConverter {
         val files = mutableMapOf<String, String>()
         val sharedNames = sharedColumns.map { it.name.uppercase() }.toSet()
 
-        files["$parentName.java"] = "package dto;\n\n" + generateAbstractClass(parentName, sharedColumns)
+        files["$parentName.java"] = buildFileContent(
+            generateAbstractClass(parentName, sharedColumns),
+            sharedColumns
+        )
 
         for (child in childTables) {
             val className = child.name.toPascalCase()
-            files["$className.java"] = "package dto;\n\n" + generateChildClass(child, parentName, sharedColumns, sharedNames)
+            files["$className.java"] = buildFileContent(
+                generateChildClass(child, parentName, sharedColumns, sharedNames),
+                child.columns
+            )
         }
 
         for (table in standaloneTables) {
             val className = table.name.toPascalCase()
-            files["$className.java"] = "package dto;\n\n" + generateStandaloneClass(table)
+            files["$className.java"] = buildFileContent(
+                generateStandaloneClass(table),
+                table.columns
+            )
         }
 
         return files
@@ -120,9 +130,33 @@ object SqlToJavaConverter {
         val files = mutableMapOf<String, String>()
         for (table in tables) {
             val className = table.name.toPascalCase()
-            files["$className.java"] = "package dto;\n\n" + generateStandaloneClass(table)
+            files["$className.java"] = buildFileContent(
+                generateStandaloneClass(table),
+                table.columns
+            )
         }
         return files
+    }
+
+    // --- File content builder with imports ---
+
+    private fun buildFileContent(classCode: String, columns: List<Column>): String {
+        val sb = StringBuilder()
+        sb.appendLine("package dto;")
+        sb.appendLine()
+
+        val imports = mutableListOf<String>()
+        if (columns.any { it.sqlType in listOf("DATE", "DATETIME", "TIMESTAMP") }) {
+            imports.add("import java.time.LocalDate;")
+        }
+
+        if (imports.isNotEmpty()) {
+            for (imp in imports) sb.appendLine(imp)
+            sb.appendLine()
+        }
+
+        sb.append(classCode)
+        return sb.toString()
     }
 
     // --- Code generation ---
@@ -189,7 +223,7 @@ object SqlToJavaConverter {
             }
             appendLine("    @Override")
             appendLine("    public String toString() {")
-            appendLine("        return \"$className{\" +")
+            appendLine("        return super.toString() + \"$className{\" +")
             for ((i, f) in extraFields.withIndex()) {
                 val comma = if (i == 0) "" else ", "
                 if (f.first == "String") {
@@ -198,7 +232,7 @@ object SqlToJavaConverter {
                     appendLine("                \"${comma}${f.second}=\" + ${f.second} +")
                 }
             }
-            appendLine("                \"} \" + super.toString();")
+            appendLine("                '}';")
             appendLine("    }")
             appendLine("}")
         }
@@ -239,12 +273,12 @@ object SqlToJavaConverter {
         "FLOAT", "REAL" -> "float"
         "DOUBLE", "DECIMAL", "NUMERIC" -> "double"
         "BOOLEAN", "BOOL" -> "boolean"
-        "DATE", "DATETIME", "TIMESTAMP" -> "java.time.LocalDateTime"
+        "DATE", "DATETIME", "TIMESTAMP" -> "LocalDate"
         else -> "String"
     }
 
     private fun String.toPascalCase(): String {
-        return replace(Regex("([a-z])([A-Z])")) { "${it.groupValues[1]}_${it.groupValues[2]}" }
+        return replace(Regex("([\\p{Ll}])([\\p{Lu}])")) { "${it.groupValues[1]}_${it.groupValues[2]}" }
             .split("_")
             .joinToString("") { it.lowercase().replaceFirstChar { c -> c.uppercase() } }
     }

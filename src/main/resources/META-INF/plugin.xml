@@ -1,33 +1,43 @@
-<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
-    <id>no.huzef.blackhole.sql-to-java-plugin</id>
+    <id>no.huzef.blackhole.sql-to-java</id>
 
-    <!-- Public plugin name should be written in Title Case.
-     Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
-    <name>Sql-to-java-plugin</name>
+    <name>SQL to Java</name>
 
-    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor url="https://www.yourcompany.com">YourCompany</vendor>
+    <vendor email="Huzefaadil23@gmail.com" url="https://github.com/DaH-uzi-efa/SQL_TO_JAVA_PLUGIN">
+        Huzefa Adil
+    </vendor>
 
-    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
-         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        Enter short description for your plugin here.<br>
-        <em>most HTML tags may be used</em>
-        ]]></description>
+        <h2>SQL to Java DTO Generator</h2>
+        <p>Automatically generates Java DTO classes from SQL CREATE TABLE statements.</p>
 
-    <!-- Product and plugin compatibility requirements.
-         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+        <h3>Features</h3>
+        <ul>
+            <li>Paste SQL and instantly get Java classes with fields, constructors, getters, and toString()</li>
+            <li>Detects shared columns across tables and offers to generate an abstract superclass with subclasses</li>
+            <li>Generates Java records for simple tables (6 fields or fewer)</li>
+            <li>Supports Unicode characters (Æ, Ø, Å, etc.) in column and table names</li>
+            <li>Automatically adds required imports (e.g. java.time.LocalDate)</li>
+            <li>Save generated classes directly to your project's source folder</li>
+        </ul>
+
+        <h3>Usage</h3>
+        <ol>
+            <li>Open the "SQL to Java" tool window from the sidebar</li>
+            <li>Paste your CREATE TABLE statements</li>
+            <li>Click "Convert to Java"</li>
+            <li>Click "Save to Project" to create the dto package with all generated files</li>
+        </ol>
+    ]]></description>
+
     <depends>com.intellij.modules.platform</depends>
 
     <resource-bundle>messages.MyMessageBundle</resource-bundle>
 
-    <!-- Extensions defined by the plugin.
-         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="MyToolWindow" factoryClass="no.huzef.blackhole.MyToolWindowFactory"
-                    icon="AllIcons.Toolwindows.ToolWindowPalette"/>
+        <toolWindow
+                id="SQL to Java"
+                factoryClass="no.huzef.blackhole.MyToolWindowFactory"
+                icon="AllIcons.Toolwindows.ToolWindowPalette"/>
     </extensions>
-
 </idea-plugin>

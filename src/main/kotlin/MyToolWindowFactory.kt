@@ -45,12 +45,7 @@ class MyToolWindowFactory : ToolWindowFactory {
             val sharedColumns = SqlToJavaConverter.findSharedColumns(tables)
 
             if (sharedColumns.size >= 3) {
-                val sharedNames = sharedColumns.map { it.name.uppercase() }.toSet()
-                val childTables = tables.filter { t ->
-                    val cols = t.columns.map { it.name.uppercase() }.toSet()
-                    cols.containsAll(sharedNames) && t.columns.size > sharedNames.size
-                }
-                val standaloneTables = tables - childTables.toSet()
+                val (childTables, standaloneTables) = SqlToJavaConverter.findChildAndStandalone(tables, sharedColumns)
 
                 if (childTables.size >= 2) {
                     val tableNames = childTables.joinToString(", ") { it.name }
