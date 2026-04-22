@@ -8,27 +8,63 @@
     </vendor>
 
     <description><![CDATA[
-        <h2>SQL to Java DTO Generator</h2>
-        <p>Automatically generates Java DTO classes from SQL CREATE TABLE statements.</p>
+        <h2>SQL to Java DTO & DB Service Generator</h2>
+        <p>Automatically generates Java DTO classes and database service classes from SQL CREATE TABLE statements.</p>
 
-        <h3>Features</h3>
+        <h3>DTO Generation</h3>
         <ul>
             <li>Paste SQL and instantly get Java classes with fields, constructors, getters, and toString()</li>
             <li>Detects shared columns across tables and offers to generate an abstract superclass with subclasses</li>
             <li>Generates Java records for simple tables (6 fields or fewer)</li>
-            <li>Supports Unicode characters (Æ, Ø, Å, etc.) in column and table names</li>
             <li>Automatically adds required imports (e.g. java.time.LocalDate)</li>
-            <li>Save generated classes directly to your project's source folder</li>
+        </ul>
+
+        <h3>DB Service Generation</h3>
+        <ul>
+            <li>Generate a full database service class with JDBC logic</li>
+            <li>Pick which CRUD operations you need: INSERT, SELECT, UPDATE, DELETE</li>
+            <li>Handles inheritance correctly — child classes get constructor args in the right order</li>
+            <li>Uses record accessors (field()) or class getters (getField()) as appropriate</li>
+            <li>Automatic LocalDate ↔ java.sql.Date conversion</li>
+        </ul>
+
+        <h3>International Support</h3>
+        <p>Automatically converts non-ASCII characters to safe Java identifiers:</p>
+        <ul>
+            <li><b>Scandinavian:</b> æ/ø/å, ä/ö → ae/oe/aa</li>
+            <li><b>German:</b> ä/ö/ü/ß → ae/oe/ue/ss</li>
+            <li><b>Icelandic:</b> þ/ð → th/d</li>
+            <li><b>Romance languages:</b> accented characters (é, ñ, ç, etc.) stripped to base letters</li>
+        </ul>
+
+        <h3>Save to Project</h3>
+        <p>Generated files are saved directly to your project's source folder:</p>
+        <ul>
+            <li>DTOs → <code>src/dto/</code></li>
+            <li>DB services → <code>src/db/</code></li>
         </ul>
 
         <h3>Usage</h3>
         <ol>
             <li>Open the "SQL to Java" tool window from the sidebar</li>
             <li>Paste your CREATE TABLE statements</li>
-            <li>Click "Convert to Java"</li>
-            <li>Click "Save to Project" to create the dto package with all generated files</li>
+            <li>Click "Convert to Java" for DTOs, or "Generate DB Service" for a service class</li>
+            <li>Click "Save to Project" to create the files</li>
         </ol>
     ]]></description>
+
+    <change-notes><![CDATA[
+        <h3>1.0.2</h3>
+        <ul>
+            <li>New: Generate full DB service classes with CRUD operations (INSERT/SELECT/UPDATE/DELETE)</li>
+            <li>New: International character support (Norwegian, Danish, Swedish, German, Icelandic, Romance languages)</li>
+            <li>New: Files auto-save to correct folders based on package (src/dto, src/db)</li>
+            <li>Fix: Primary keys now stay on child classes instead of leaking into abstract parents</li>
+            <li>Fix: Record accessors (field()) vs class getters (getField()) handled correctly</li>
+            <li>Fix: LocalDate ↔ java.sql.Date conversion for JDBC compatibility</li>
+            <li>Refactor: Code split into focused modules (parser, detector, generator, file saver)</li>
+        </ul>
+    ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
 

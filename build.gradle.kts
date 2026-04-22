@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "no.huzef.blackhole"
-version = "1.0.1"
+version = "1.0.2"
 
 // Set the JVM language level used to build the project.
 kotlin {
